@@ -1,0 +1,297 @@
+# https://docs.docker.com/compose/gettingstarted/
+
+version: '3.9'
+
+services:
+
+  app:
+    container_name: app
+    hostname: app
+    image: ${PROJECT_NAME}_app
+    build:
+      context: ./docker/app
+      dockerfile: Dockerfile
+    environment:
+      TZ: ${TZ}
+    volumes:
+      - type: bind
+        source: ./src
+        target: /var/www
+      - type: bind
+        source: ./docker/app/php.ini
+        target: /usr/local/etc/php/php.ini
+    networks:
+      backend:
+    ports:
+      - 9000:80
+
+  app_cron:
+    container_name: app_cron
+    hostname: app_cron
+    image: ${PROJECT_NAME}_app
+    environment:
+      TZ: ${TZ}
+    command: cron -f
+    volumes:
+      - type: bind
+        source: ./src
+        target: /var/www
+      - type: bind
+        source: ./docker/app/php.ini
+        target: /usr/local/etc/php/php.ini
+      - type: bind
+        source: ./docker/app/etc/cron.d
+        target: /etc/cron.d/
+    depends_on:
+      - app
+    networks:
+      backend:
+
+  app_queue:
+    container_name: app_queue
+    hostname: app_queue
+    image: ${PROJECT_NAME}_app
+    environment:
+      TZ: ${TZ}
+    command: /usr/bin/supervisord -n -c /etc/supervisor/supervisord.conf
+    volumes:
+      - type: bind
+        source: ./src
+        target: /var/www
+      - type: bind
+        source: ./docker/app/php.ini
+        target: /usr/local/etc/php/php.ini
+      - type: bind
+        source: ./docker/app/etc/supervisor/supervisord.conf
+        target: /etc/supervisor/supervisord.conf
+      - type: bind
+        source: ./docker/app/etc/supervisor/conf.d
+        target: /etc/supervisor/conf.d
+    depends_on:
+      - app
+      - db_redis
+    networks:
+      backend:
+
+  web:
+    container_name: web
+    hostname: web
+    image: ${PROJECT_NAME}_web
+    build:
+      context: ./docker/web
+      dockerfile: Dockerfile
+    environment:
+      TZ: ${TZ}
+    volumes:
+      - type: bind
+        source: ./src
+        target: /var/www
+      - type: bind
+        source: ./docker/web/conf.d
+        target: /etc/nginx/conf.d
+    depends_on:
+      - app
+    ports:
+      - 80:80
+    networks:
+      backend:
+
+  db_pgsql:
+    container_name: db_pgsql
+    hostname: db_pgsql
+    image: ${PROJECT_NAME}_db_pgsql
+    build:
+      context: ./docker/db_pgsql
+      dockerfile: Dockerfile
+    environment:
+      # POSTGRES_DB: main # initdb.dにて作成するためコメントアウト
+      POSTGRES_USER: root
+      POSTGRES_PASS: password
+      POSTGRES_HOST_AUTH_METHOD: trust
+      POSTGRES_INITDB_ARGS: --encoding=UTF-8 --locale=C
+      TZ: ${TZ}
+    volumes:
+      - type: bind
+        source: ./docker/db_pgsql/initdb.d
+        target: /docker-entrypoint-initdb.d
+      - type: volume
+        source: db-pgsql-data
+        target: /var/lib/postgresql/data
+    ports:
+      - 5432:5432
+    networks:
+      backend:
+
+  db_pgsql_admin:
+    container_name: db_pgsql_admin
+    hostname: db_pgsql_admin
+    image: dpage/pgadmin4
+    environment:
+        PGADMIN_DEFAULT_EMAIL: admin@example.com
+        PGADMIN_DEFAULT_PASSWORD: password
+        PGADMIN_CONFIG_DEBUG: 1
+        PGADMIN_CONFIG_CONSOLE_LOG_LEVEL: 40
+        PGADMIN_CONFIG_FILE_LOG_LEVEL: 40
+    volumes:
+      - type: volume
+        source: db-pgsql-admin-data
+        target: /var/lib/pgadmin
+    depends_on:
+      - db_pgsql
+    ports:
+      - 8090:80
+    networks:
+      backend:
+
+  db_mysql:
+    container_name: db_mysql
+    hostname: db_mysql
+    image: ${PROJECT_NAME}_db_mysql
+    build:
+      context: ./docker/db_mysql
+      dockerfile: Dockerfile
+    environment:
+      TZ: ${TZ}
+      MYSQL_DATABASE: main
+      MYSQL_ROOT_PASSWORD: password
+    volumes:
+      - type: bind
+        source: ./docker/db_mysql/conf.d
+        target: /etc/my.cnf.d/
+      - type: bind
+        source: ./docker/db_mysql/initdb.d
+        target: /docker-entrypoint-initdb.d
+      - type: volume
+        source: db-mysql-data
+        target: /var/lib/mysql
+    ports:
+      - 3306:3306
+    networks:
+      backend:
+
+  db_mysql_admin:
+    container_name: db_mysql_admin
+    hostname: db_mysql_admin
+    image: phpmyadmin:5.2
+    depends_on:
+      - db_mysql
+    ports:
+      - 8091:80
+    environment:
+      PMA_HOSTS: db_mysql
+      PMA_ARBITRARY: -1
+    networks:
+      backend:
+  
+  db_redis:
+    container_name: db_redis
+    hostname: db_redis
+    image: redis:latest
+    volumes:
+      - type: volume
+        source: db-redis-data
+        target: /data
+    ports:
+      - 6379:6379
+    networks:
+      backend:
+
+  db_redis_admin:
+    container_name: db_redis_admin
+    hostname: db_redis_admin
+    image: redislabs/redisinsight:latest
+    volumes:
+      - type: volume
+        source: db-redis-admin-data
+        target: /db
+    depends_on:
+      - db_redis
+    ports:
+      - 8092:8001
+    networks:
+      backend:
+  
+  db_memcached:
+    container_name: db_memcached
+    hostname: db_memcached
+    image: memcached:latest
+    ports:
+      - 11211:11211
+    networks:
+      backend:
+
+  db_mongo:
+    container_name: db_mongo
+    hostname: db_mongo
+    image: mongo:latest
+    volumes:
+      - type: bind
+        source: ./docker/db_mongo/conf.d
+        target: /etc/mongo
+      - type: volume
+        source: db-mongo-data
+        target: /data/db
+    ports:
+      - 27017:27017
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: password
+    networks:
+      backend:
+
+  db_mongo_admin:
+    container_name: db_mongo_admin
+    hostname: db_mongo_admin
+    image: mongo-express:latest
+    depends_on:
+      - db_mongo
+    ports:
+      - 8093:8081
+    environment:
+      ME_CONFIG_BASICAUTH_USERNAME: admin
+      ME_CONFIG_BASICAUTH_PASSWORD: password
+      ME_CONFIG_MONGODB_URL: mongodb://root:password@db_mongo:27017/
+    networks:
+      backend:
+
+  # # https://github.com/mailhog/MailHog/blob/master/docs/CONFIG.md
+  # mail_mailhog:
+  #   image: mailhog/mailhog
+  #   environment:
+  #     MH_STORAGE: mongodb
+  #     MH_MONGO_URI: db_mongo:27017
+  #     MH_MONGO_DB: mail
+  #   ports:
+  #     - 8025:8025
+  #   networks:
+  #     backend:
+  #   depends_on:
+  #     - db_mongo
+
+  mail_mailpit:
+    image: 'axllent/mailpit:latest'
+    volumes:
+      - type: volume
+        source: mail-mailpit-data
+        target: /data
+    environment:
+      MP_DATA_FILE: /data/mailpit.db
+    ports:
+      - 1025:1025
+      - 8025:8025
+    networks:
+      - backend
+
+volumes:
+  db-pgsql-data:
+  db-mysql-data:
+  db-redis-data:
+  db-mongo-data:
+  db-pgsql-admin-data:
+  db-redis-admin-data:
+  mail-mailpit-data:
+
+networks:
+  backend:
+    name: ${PROJECT_NAME}_backend
+    driver: bridge
