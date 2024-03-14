@@ -25,17 +25,6 @@ RUN apt-get update \
 
 RUN git clone https://github.com/phpredis/phpredis.git /usr/src/php/ext/redis
 
-# https://github.com/mailhog/mhsendmail
-RUN curl -sSL https://github.com/mailhog/mhsendmail/releases/download/v0.2.0/mhsendmail_linux_amd64 -o mhsendmail \
-    && chmod +x mhsendmail \
-    && mv mhsendmail /usr/local/bin/mhsendmail
-
-# https://github.com/axllent/mailpit/wiki/Building-from-source
-RUN git clone https://github.com/axllent/mailpit.git /mailpit \
-    && cd /mailpit \
-    && go build -ldflags "-s -w" \
-    && mv mailpit /usr/local/bin/mailpit
-
 RUN pecl install \
         memcached \
         mongodb \

@@ -4,71 +4,71 @@ version: '3.9'
 
 services:
 
-  app:
-    container_name: app
-    hostname: app
-    image: ${PROJECT_NAME}_app
+  backend:
+    container_name: backend
+    hostname: backend
+    image: ${PROJECT_NAME}_backend
     build:
-      context: ./docker/app
+      context: ./docker/backend
       dockerfile: Dockerfile
     environment:
       TZ: ${TZ}
     volumes:
       - type: bind
-        source: ./src
+        source: ./src/backend
         target: /var/www
       - type: bind
-        source: ./docker/app/php.ini
+        source: ./docker/backend/php.ini
         target: /usr/local/etc/php/php.ini
     networks:
       backend:
     ports:
       - 9000:80
 
-  app_cron:
-    container_name: app_cron
-    hostname: app_cron
-    image: ${PROJECT_NAME}_app
+  backend_cron:
+    container_name: backend_cron
+    hostname: backend_cron
+    image: ${PROJECT_NAME}_backend
     environment:
       TZ: ${TZ}
     command: cron -f
     volumes:
       - type: bind
-        source: ./src
+        source: ./src/backend
         target: /var/www
       - type: bind
-        source: ./docker/app/php.ini
+        source: ./docker/backend/php.ini
         target: /usr/local/etc/php/php.ini
       - type: bind
-        source: ./docker/app/etc/cron.d
+        source: ./docker/backend/etc/cron.d
         target: /etc/cron.d/
     depends_on:
-      - app
+      - backend
     networks:
       backend:
 
-  app_queue:
-    container_name: app_queue
-    hostname: app_queue
-    image: ${PROJECT_NAME}_app
+  backend_queue:
+    container_name: backend_queue
+    hostname: backend_queue
+    image: ${PROJECT_NAME}_backend
     environment:
       TZ: ${TZ}
     command: /usr/bin/supervisord -n -c /etc/supervisor/supervisord.conf
     volumes:
       - type: bind
-        source: ./src
+        source: ./src/backend
         target: /var/www
       - type: bind
-        source: ./docker/app/php.ini
+        source: ./docker/backend/php.ini
         target: /usr/local/etc/php/php.ini
       - type: bind
-        source: ./docker/app/etc/supervisor/supervisord.conf
+        source: ./docker/backend/etc/supervisor/supervisord.conf
         target: /etc/supervisor/supervisord.conf
       - type: bind
-        source: ./docker/app/etc/supervisor/conf.d
+        source: ./docker/backend/etc/supervisor/conf.d
         target: /etc/supervisor/conf.d
     depends_on:
-      - app
+      - backend
       - db_redis
     networks:
       backend:
@@ -84,15 +84,39 @@ services:
       TZ: ${TZ}
     volumes:
       - type: bind
-        source: ./src
+        source: ./src/backend
         target: /var/www
       - type: bind
         source: ./docker/web/conf.d
         target: /etc/nginx/conf.d
     depends_on:
-      - app
+      - backend
     ports:
       - 80:80
+    networks:
+      backend:
+  
+  # https://github.com/nodejs/docker-node
+  frontend:
+    container_name: frontend
+    hostname: frontend
+    image: ${PROJECT_NAME}_frontend
+    build:
+      context: ./docker/frontend
+      dockerfile: Dockerfile
+    environment:
+      TZ: ${TZ}
+      NODE_ENV: development
+    working_dir: /home/node/app
+    volumes:
+      - type: bind
+        source: ./src/frontend
+        target: /home/node/app
+    expose:
+      - "4000"
+    ports:
+      - 4000:4000
+    command: "npm run dev -- --host 0.0.0.0 --port 4000"
     networks:
       backend:
 
@@ -253,20 +277,6 @@ services:
       ME_CONFIG_MONGODB_URL: mongodb://root:password@db_mongo:27017/
     networks:
       backend:
-
-  # # https://github.com/mailhog/MailHog/blob/master/docs/CONFIG.md
-  # mail_mailhog:
-  #   image: mailhog/mailhog
-  #   environment:
-  #     MH_STORAGE: mongodb
-  #     MH_MONGO_URI: db_mongo:27017
-  #     MH_MONGO_DB: mail
-  #   ports:
-  #     - 8025:8025
-  #   networks:
-  #     backend:
-  #   depends_on:
-  #     - db_mongo
 
   mail_mailpit:
     image: 'axllent/mailpit:latest'
