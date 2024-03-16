@@ -1,8 +1,9 @@
 - [1. このプロジェクトについて](#1-このプロジェクトについて)
-  - [1.1. Laravelプロジェクト作成＆削除](#11-laravelプロジェクト作成削除)
-  - [1.2. CORS設定](#12-cors設定)
-  - [1.3. コンテナ立ち上げ](#13-コンテナ立ち上げ)
-  - [1.4. すべてのコンテナを削除](#14-すべてのコンテナを削除)
+  - [1.1. 環境ファイル（.env）編集](#11-環境ファイルenv編集)
+  - [1.2. プロジェクト作成＆削除](#12-プロジェクト作成削除)
+  - [1.3. CORS設定](#13-cors設定)
+  - [1.4. コンテナ立ち上げ](#14-コンテナ立ち上げ)
+  - [1.5. すべてのコンテナを削除](#15-すべてのコンテナを削除)
 - [2. URL](#2-url)
   - [2.1. バックエンド](#21-バックエンド)
   - [2.2. フロントエンド](#22-フロントエンド)
@@ -11,28 +12,39 @@
 
 Laravel v10を自前のDocker Composeで使用するためのテンプレ用プロジェクトです。
 
-- Backend [ [GraphQL on Laravel](https://lighthouse-php.com/) ]
-- Frontend [ [Apollo Client](https://www.apollographql.com/docs/react/get-started/) ]
+- バックエンド -> backendコンテナ [ [GraphQL on Laravel](https://lighthouse-php.com/) ]
+- フロントエンド -> frontendコンテナ [ [Apollo Client on Vite](https://www.apollographql.com/docs/react/get-started/) ]
 
 ※ このプロジェクトでは、あえて`.gitignore`にて`/src`ディレクトリを捕捉しないよう設定しています。（必要に応じて指定を削除してください）
 
-## 1.1. Laravelプロジェクト作成＆削除
+## 1.1. 環境ファイル（.env）編集
 
-Laravelプロジェクト（srcフォルダ）を作成します。
+.envファイルの以下のオプションを設定します。
+
+- LARAVEL_BREEZE_FRONTEND_OPTION（Laravel Breezeのフロントエンドオプション。）
+- APOLLO_CLIENT_TEMPLATE_OPTION（Viteの言語オプション。）
+
+## 1.2. プロジェクト作成＆削除
+
+srcフォルダを作成します。  
+srcフォルダには、以下の2つのコンテナで使用するソースファイルが含まれます。
+
+- backend（[Laravel v10](https://readouble.com/laravel/10.x/ja/installation.html)プロジェクトファイル一式）
+- frontend（[Vite](https://ja.vitejs.dev/)を中核としたフロントエンドファイル一式）
 
 ```sh
 cd script/init/
 ./create_src.sh
 ```
 
-Laravelプロジェクト（srcフォルダ）を削除したい場合にのみ実行します。
+srcフォルダを削除したい場合にのみ実行します。
 
 ```sh
 cd script/init/
 ./remove_src.sh
 ```
 
-## 1.2. CORS設定
+## 1.3. CORS設定
 
 /src/backend/config/cors.phpを編集する
 
@@ -49,7 +61,7 @@ return [
 ];
 ```
 
-## 1.3. コンテナ立ち上げ
+## 1.4. コンテナ立ち上げ
 
 コンテナビルド
 
@@ -65,7 +77,7 @@ docker compose up --build
 docker compose up
 ```
 
-DBマイグレーション（最初１回）
+テーブル作成（最初のみ）
 
 `docker compose up`を実行して各コンテナが立ち上がっていることが前提。
 
@@ -73,14 +85,14 @@ DBマイグレーション（最初１回）
 docker compose exec -u $(id -u):$(id -g) backend php artisan migrate
 ```
 
-usersにレコードを追加
+usersテーブルにレコードを追加
 
 ```sh
 docker compose exec backend php artisan tinker
 \App\Models\User::factory(10)->create();
 ```
 
-## 1.4. すべてのコンテナを削除
+## 1.5. すべてのコンテナを削除
 
 ```sh
 cd script
