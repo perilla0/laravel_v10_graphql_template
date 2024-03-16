@@ -7,6 +7,7 @@
 - [2. URL](#2-url)
   - [2.1. バックエンド](#21-バックエンド)
   - [2.2. フロントエンド](#22-フロントエンド)
+- [3. Qiita記事のURL](#3-qiita記事のurl)
 
 # 1. このプロジェクトについて
 
@@ -115,3 +116,8 @@ http://localhost/horizon
 ## 2.2. フロントエンド
 
 http://localhost:4000
+
+# 3. Qiita記事のURL
+
+Docker ComposeでGraphQL環境構築。[バック = Laravel v10] [フロント = Apollo Client]
+https://qiita.com/perilla/items/36b51751e25d3a30b9b5
