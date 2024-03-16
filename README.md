@@ -106,7 +106,7 @@ cd script
 Laravel Breeze  
 http://localhost
 
-Laravel GraphQL エンドポイント  
+Laravel GraphQL クライアント  
 http://localhost/graphiql
 
 Laravel Horizon  
