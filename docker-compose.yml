@@ -112,8 +112,6 @@ services:
       - type: bind
         source: ./src/frontend
         target: /home/node/app
-    expose:
-      - "4000"
     ports:
       - 4000:4000
     command: "npm run dev -- --host 0.0.0.0 --port 4000"
